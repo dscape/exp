@@ -1,0 +1,46 @@
+{
+  "name": "escola-xadrez-porto",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx scripts/dev.ts",
+    "dev:web": "next dev",
+    "dev:prepare": "tsx scripts/dev.ts --prepare-only",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/**/*.test.ts",
+    "worker": "tsx src/worker.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:clear-events": "tsx scripts/clear-events.ts",
+    "import:roster": "tsx scripts/import-roster.ts",
+    "import:events": "tsx scripts/import-events.ts",
+    "extract:deadlines": "tsx scripts/extract-event-deadlines.ts",
+    "fide:history": "tsx scripts/fetch-fide-history.ts",
+    "test:visual": "playwright test"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "cheerio": "^1.0.0",
+    "fast-xml-parser": "^4.5.1",
+    "next": "^15.1.6",
+    "pg": "^8.13.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsx": "^4.19.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^22.10.7",
+    "@types/pg": "^8.11.11",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
