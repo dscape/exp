@@ -3,13 +3,13 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: escola
-      POSTGRES_PASSWORD: escola
-      POSTGRES_DB: escola
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U escola -d escola"]
+      test: ["CMD-SHELL", "pg_isready -U \"${POSTGRES_USER}\" -d \"${POSTGRES_DB}\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -20,8 +20,24 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://escola:escola@postgres:5432/escola
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
     command: npm run db:migrate
+
+  seed:
+    build: .
+    profiles: ["seed"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+    command:
+      - sh
+      - -c
+      - |
+        : "$${INITIAL_ADMIN_PASSWORD:?Set INITIAL_ADMIN_PASSWORD before running seed}"
+        npm run db:seed
 
   web:
     build: .
@@ -30,9 +46,10 @@ services:
       migrate:
         condition: service_completed_successfully
     environment:
-      DATABASE_URL: postgres://escola:escola@postgres:5432/escola
-      APP_BASE_URL: https://xadrez.example.pt
-      UPLOAD_DIR: /app/uploads
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      APP_BASE_URL: ${APP_BASE_URL:?Set APP_BASE_URL in .env}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
+      BACKUP_DIR: ${BACKUP_DIR:-/app/uploads/backups}
     volumes:
       - uploads:/app/uploads
     expose:
@@ -45,13 +62,40 @@ services:
       migrate:
         condition: service_completed_successfully
     environment:
-      DATABASE_URL: postgres://escola:escola@postgres:5432/escola
-      UPLOAD_DIR: /app/uploads
-      FIDE_SYNC_ENABLED: "true"
-      CHESS_RESULTS_SYNC_ENABLED: "true"
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
+      BACKUP_DIR: ${BACKUP_DIR:-/app/uploads/backups}
+      FIDE_SYNC_ENABLED: ${FIDE_SYNC_ENABLED:-true}
+      CHESS_RESULTS_SYNC_ENABLED: ${CHESS_RESULTS_SYNC_ENABLED:-true}
+      CHESS_RESULTS_MIN_INTERVAL_MS: ${CHESS_RESULTS_MIN_INTERVAL_MS:-2500}
+      CHESS_RESULTS_ROUND_POLL_MINUTES: ${CHESS_RESULTS_ROUND_POLL_MINUTES:-60}
     volumes:
       - uploads:/app/uploads
     command: npm run worker
+
+  backup-sync:
+    image: rclone/rclone:1.67
+    restart: unless-stopped
+    profiles: ["backup"]
+    environment:
+      RCLONE_REMOTE: ${RCLONE_REMOTE:-}
+      BACKUP_SYNC_INTERVAL_SECONDS: ${BACKUP_SYNC_INTERVAL_SECONDS:-3600}
+    volumes:
+      - uploads:/data:ro
+      - ./ops/rclone:/config/rclone:ro
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        : "$${RCLONE_REMOTE:?Set RCLONE_REMOTE before enabling backup profile}"
+        while true; do
+          if [ -d /data/backups ]; then
+            rclone sync /data/backups "$${RCLONE_REMOTE}" --create-empty-src-dirs
+          else
+            echo "Waiting for /data/backups"
+          fi
+          sleep "$${BACKUP_SYNC_INTERVAL_SECONDS:-3600}"
+        done
 
   caddy:
     image: caddy:2-alpine
@@ -59,7 +103,7 @@ services:
     depends_on:
       - web
     environment:
-      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in .env}
     ports:
       - "80:80"
       - "443:443"

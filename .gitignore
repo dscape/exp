@@ -12,3 +12,4 @@ uploads
 pgdata
 *.log
 tsconfig.tsbuildinfo
+ops/rclone/rclone.conf

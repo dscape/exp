@@ -870,10 +870,16 @@ function sessionCookieOptions() {
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureCookieDeployment(),
     path: '/',
     maxAge: SESSION_MAX_AGE_SECONDS,
   };
+}
+
+function isSecureCookieDeployment() {
+  const appBaseUrl = process.env.APP_BASE_URL;
+  if (appBaseUrl) return appBaseUrl.startsWith('https://');
+  return process.env.NODE_ENV === 'production';
 }
 
 function badRequest(error: string) {

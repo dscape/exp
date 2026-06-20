@@ -6,7 +6,7 @@ Next.js + PostgreSQL application for the Escola de Xadrez do Porto club portal. 
 
 - Login and access-request flows
 - Main club shell with role-aware navigation
-- Mural with post-it creation, image preview, markdown help, dragging, removal, WhatsApp share links and toast feedback
+- Mural with post-it creation, markdown help, dragging, removal, WhatsApp share links and toast feedback
 - Events list, filters, recommendations, event creation, Chess-Results URL detection/import, detail pages for upcoming/ongoing/completed events, registration management, documents and WhatsApp sharing
 - FIDE ratings leaderboard with month/type/group/search/sort controls
 - Player profiles with live tournament card, ratings, chart, medals, recent events, games and PGN download
@@ -68,19 +68,50 @@ Event headers supported: `season,name,location,distance_km,month,date_label,type
 
 ## VPS / Docker
 
+Copy the example environment and replace the placeholders with production values. Use URL-safe random secrets so the same password can be used in `POSTGRES_PASSWORD` and `DATABASE_URL` without URL encoding surprises.
+
 ```bash
 cp .env.example .env
-# edit APP_DOMAIN / APP_BASE_URL / DATABASE_URL as needed
+openssl rand -hex 32 # use for POSTGRES_PASSWORD and DATABASE_URL
+openssl rand -base64 24 # use once for INITIAL_ADMIN_PASSWORD
+```
+
+Set at least:
+
+- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- `DATABASE_URL=postgres://<user>:<password>@postgres:5432/<db>`
+- `APP_DOMAIN=xadrez.example.pt`
+- `APP_BASE_URL=https://xadrez.example.pt`
+
+Deploy or update the app:
+
+```bash
 docker compose up -d --build
 ```
+
+Run the seed exactly once after the first deploy, with `INITIAL_ADMIN_PASSWORD` set in `.env` or passed only for that command:
+
+```bash
+docker compose run --rm seed
+```
+
+After logging in with the initial admin password, remove or blank `INITIAL_ADMIN_PASSWORD` in `.env`. Normal deploys run migrations only and never run seed data.
 
 Services:
 
 - `postgres`: PostgreSQL database
-- `migrate`: applies migrations only. Run `npm run db:seed` manually for one-time demo/bootstrap seeding.
+- `migrate`: applies migrations only
+- `seed`: one-time bootstrap seed service behind the `seed` profile
 - `web`: Next.js standalone app
-- `worker`: background job runner
+- `worker`: background job runner and nightly database backup creator
 - `caddy`: reverse proxy / TLS
+- `backup-sync`: optional rclone offsite backup sync behind the `backup` profile
+
+Nightly backups are written under the `uploads` Docker volume at `/app/uploads/backups`. To sync them offsite, configure `ops/rclone/rclone.conf`, set `RCLONE_REMOTE` in `.env`, then run:
+
+```bash
+docker compose --profile backup up -d backup-sync
+```
 
 ## Workers
 

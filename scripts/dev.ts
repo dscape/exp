@@ -16,7 +16,13 @@ async function main() {
     process.env.DATABASE_URL = localizeDatabaseUrl(process.env.DATABASE_URL);
   }
   if (!process.env.DATABASE_URL) process.env.DATABASE_URL = DEFAULT_DATABASE_URL;
+  process.env.POSTGRES_USER ??= 'escola';
+  process.env.POSTGRES_PASSWORD ??= 'escola';
+  process.env.POSTGRES_DB ??= 'escola';
+  process.env.APP_DOMAIN ??= 'localhost';
+  process.env.APP_BASE_URL ??= 'http://localhost:3000';
   process.env.UPLOAD_DIR ??= './uploads';
+  process.env.BACKUP_DIR ??= './uploads/backups';
   process.env.CHESS_RESULTS_SYNC_ENABLED ??= 'true';
   process.env.FIDE_SYNC_ENABLED ??= 'true';
 
